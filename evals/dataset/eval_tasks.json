@@ -1,0 +1,62 @@
+[
+  {
+    "company": "小米",
+    "objective": "评估小米在智能电动汽车领域的竞争格局与供应链合作机会",
+    "mode": "deep",
+    "expected_key_points": ["汽车业务进展", "竞争格局", "供应链体系", "合作风险"]
+  },
+  {
+    "company": "宁德时代",
+    "objective": "分析其动力电池技术路线与客户集中度风险",
+    "mode": "deep",
+    "expected_key_points": ["技术路线", "主要客户", "产能布局", "风险因素"]
+  },
+  {
+    "company": "比亚迪",
+    "objective": "调研其垂直整合模式的优势与潜在风险",
+    "mode": "standard",
+    "expected_key_points": ["垂直整合", "成本优势", "海外扩张", "风险"]
+  },
+  {
+    "company": "华为",
+    "objective": "梳理其鸿蒙生态伙伴体系及对合作厂商的影响",
+    "mode": "standard",
+    "expected_key_points": ["鸿蒙生态", "合作伙伴", "商业模式", "风险"]
+  },
+  {
+    "company": "字节跳动",
+    "objective": "评估其云计算业务的竞争定位与增长空间",
+    "mode": "deep",
+    "expected_key_points": ["火山引擎", "竞争定位", "增长空间", "风险"]
+  },
+  {
+    "company": "美的集团",
+    "objective": "调研其机器人与自动化业务的战略布局",
+    "mode": "standard",
+    "expected_key_points": ["库卡整合", "机器人业务", "战略方向", "经营风险"]
+  },
+  {
+    "company": "大疆创新",
+    "objective": "分析其在行业级无人机市场的壁垒与地缘政治风险",
+    "mode": "deep",
+    "expected_key_points": ["技术壁垒", "行业市场", "地缘风险", "应对策略"]
+  },
+  {
+    "company": "京东方",
+    "objective": "评估其面板周期波动下的财务韧性与盈利质量",
+    "mode": "standard",
+    "expected_key_points": ["面板周期", "财务状况", "盈利能力", "风险"]
+  },
+  {
+    "company": "药明康德",
+    "objective": "调研其 CXO 业务受政策影响的程度与应对",
+    "mode": "deep",
+    "expected_key_points": ["CXO 业务", "政策影响", "海外收入", "风险应对"]
+  },
+  {
+    "company": "拼多多",
+    "objective": "分析其 Temu 跨境业务的模式、增长与合规风险",
+    "mode": "deep",
+    "expected_key_points": ["Temu 模式", "增长数据", "合规风险", "竞争"]
+  }
+]

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企业情报调研分析系统</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="app" v-cloak>
+  <!-- 侧栏：发起调研 + 历史任务 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">🔎</span>
+      <div>
+        <h1>企业情报调研</h1>
+        <p>LangGraph 多 Agent · Vue 前端</p>
+      </div>
+    </div>
+
+    <form class="panel new-task" @submit.prevent="submitTask">
+      <label>公司名称
+        <input v-model.trim="form.company" placeholder="例如：小米" required>
+      </label>
+      <label>调研目标
+        <textarea v-model.trim="form.objective" rows="3"
+                  placeholder="例如：评估与其合作的供应链风险"></textarea>
+      </label>
+      <div class="mode-row">
+        <button type="button" class="mode-chip" :class="{active: form.mode==='standard'}"
+                @click="form.mode='standard'">分层团队</button>
+        <button type="button" class="mode-chip" :class="{active: form.mode==='deep'}"
+                @click="form.mode='deep'">深度研究</button>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" v-model="form.autoApprove"> 自动通过人工审批
+      </label>
+      <button type="submit" class="btn primary" :disabled="submitting">
+        {{ submitting ? '提交中…' : '开始调研' }}
+      </button>
+      <p v-if="formError" class="form-error">{{ formError }}</p>
+    </form>
+
+    <h2 class="side-title">历史任务</h2>
+    <ul class="task-list">
+      <li v-if="!tasks.length" class="empty">暂无历史任务</li>
+      <li v-for="t in tasks" :key="t.id">
+        <button class="task-item" :class="{active: current && current.id===t.id}"
+                @click="selectTask(t)">
+          <span class="task-company">{{ t.company }}</span>
+          <span class="task-meta">
+            {{ t.mode === 'deep' ? '深度' : '标准' }} · {{ t.created_at }}
+          </span>
+          <status-pill :status="t.status"/>
+        </button>
+      </li>
+    </ul>
+  </aside>
+
+  <!-- 主区 -->
+  <main class="main">
+    <template v-if="!current">
+      <div class="hero">
+        <h2>发起一次调研，或在左侧选择历史任务</h2>
+        <ul class="hero-points">
+          <li><b>standard</b> — 搜集组 → 分析组 ∥ 风控组 → 综合报告</li>
+          <li><b>deep</b> — 规划 → 并行研究员 ×N → 反思质检循环</li>
+          <li>全程人工审批（interrupt），结果自动沉淀进 RAG 情报知识库</li>
+        </ul>
+      </div>
+    </template>
+
+    <template v-else>
+      <header class="task-header">
+        <div>
+          <h2>{{ current.company }} <span class="mode-tag">{{ current.mode }}</span></h2>
+          <p class="objective">{{ current.objective || '全面调研' }}</p>
+        </div>
+        <status-pill :status="current.status" large/>
+      </header>
+
+      <!-- 审批面板（awaiting_approval 时优先展示） -->
+      <approval-panel v-if="current.status==='awaiting_approval'"
+                      :task-id="current.id" @decided="onDecided"/>
+
+      <nav class="tabs" v-else>
+        <button v-for="tab in tabs" :key="tab.key" class="tab"
+                :class="{active: activeTab===tab.key}" @click="activeTab=tab.key">
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <timeline-panel v-if="activeTab==='timeline' && current.status!=='awaiting_approval'"
+                      :events="events" :polling="polling"/>
+      <report-panel v-if="activeTab==='report' && current.status!=='awaiting_approval'"
+                    :task-id="current.id" :refresh-key="resultVersion"/>
+      <kb-panel v-if="activeTab==='kb'"/>
+    </template>
+  </main>
+</div>
+
+<script src="vendor/vue.global.prod.js"></script>
+<script src="vendor/marked.min.js"></script>
+<script src="vendor/purify.min.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
