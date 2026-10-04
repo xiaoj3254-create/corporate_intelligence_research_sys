@@ -15,7 +15,7 @@
       <span class="brand-mark">🔎</span>
       <div>
         <h1>企业情报调研</h1>
-        <p>LangGraph 多 Agent · Vue 前端</p>
+        <p>多 Agent 调研工作台</p>
       </div>
     </div>
 
@@ -46,14 +46,19 @@
     <ul class="task-list">
       <li v-if="!tasks.length" class="empty">暂无历史任务</li>
       <li v-for="t in tasks" :key="t.id">
-        <button class="task-item" :class="{active: current && current.id===t.id}"
-                @click="selectTask(t)">
-          <span class="task-company">{{ t.company }}</span>
+        <div class="task-item" role="button" tabindex="0"
+             :class="{active: current && current.id===t.id}"
+             @click="selectTask(t)" @keydown.enter="selectTask(t)">
+          <div class="task-row">
+            <span class="task-company">{{ t.company }}</span>
+            <button class="task-del" title="删除任务" @click.stop="delTask(t)">✕</button>
+          </div>
           <span class="task-meta">
-            {{ t.mode === 'deep' ? '深度' : '标准' }} · {{ t.created_at }}
+            <span>{{ t.mode === 'deep' ? '深度研究' : '分层团队' }}</span>
+            <span class="task-time" :title="t.created_at">{{ (t.created_at || '').slice(5, 16) }}</span>
           </span>
-          <status-pill :status="t.status"/>
-        </button>
+          <status-pill :status="t.status"></status-pill>
+        </div>
       </li>
     </ul>
   </aside>
@@ -63,26 +68,38 @@
     <template v-if="!current">
       <div class="hero">
         <h2>发起一次调研，或在左侧选择历史任务</h2>
-        <ul class="hero-points">
-          <li><b>standard</b> — 搜集组 → 分析组 ∥ 风控组 → 综合报告</li>
-          <li><b>deep</b> — 规划 → 并行研究员 ×N → 反思质检循环</li>
-          <li>全程人工审批（interrupt），结果自动沉淀进 RAG 情报知识库</li>
-        </ul>
+        <div class="mode-cards">
+          <div class="mode-card m-standard">
+            <b>分层团队</b>
+            <span>搜集组先摸清信息，分析组与风控组并行研判，最后汇成综合报告。</span>
+          </div>
+          <div class="mode-card m-deep">
+            <b>深度研究</b>
+            <span>先拆解子问题，多个研究员并行取证，质检员循环把关直到覆盖完整。</span>
+          </div>
+        </div>
+        <p class="hero-note">报告生成后会暂停等你审批；每次调研的情报自动存入知识库，下次可直接检索复用。</p>
       </div>
     </template>
 
     <template v-else>
       <header class="task-header">
         <div>
-          <h2>{{ current.company }} <span class="mode-tag">{{ current.mode }}</span></h2>
+          <h2>{{ current.company }}
+            <span class="mode-tag">{{ current.mode === 'deep' ? '深度研究' : '分层团队' }}</span>
+          </h2>
           <p class="objective">{{ current.objective || '全面调研' }}</p>
         </div>
-        <status-pill :status="current.status" large/>
+        <div class="header-actions">
+          <button v-if="current.status==='failed'" class="btn ghost"
+                  @click="retryTask(current)">↻ 从断点重试</button>
+          <status-pill :status="current.status" large></status-pill>
+        </div>
       </header>
 
       <!-- 审批面板（awaiting_approval 时优先展示） -->
       <approval-panel v-if="current.status==='awaiting_approval'"
-                      :task-id="current.id" @decided="onDecided"/>
+                      :task-id="current.id" @decided="onDecided"></approval-panel>
 
       <nav class="tabs" v-else>
         <button v-for="tab in tabs" :key="tab.key" class="tab"
@@ -91,11 +108,14 @@
         </button>
       </nav>
 
-      <timeline-panel v-if="activeTab==='timeline' && current.status!=='awaiting_approval'"
-                      :events="events" :polling="polling"/>
-      <report-panel v-if="activeTab==='report' && current.status!=='awaiting_approval'"
-                    :task-id="current.id" :refresh-key="resultVersion"/>
-      <kb-panel v-if="activeTab==='kb'"/>
+      <!-- keep-alive 缓存 tab 面板：切换 tab 不销毁重建，避免报告内容闪烁与重复请求 -->
+      <keep-alive>
+        <timeline-panel v-if="activeTab==='timeline' && current.status!=='awaiting_approval'"
+                        :events="events" :polling="polling"></timeline-panel>
+        <report-panel v-else-if="activeTab==='report' && current.status!=='awaiting_approval'"
+                      :task-id="current.id" :refresh-key="resultVersion"></report-panel>
+        <kb-panel v-else-if="activeTab==='kb'"></kb-panel>
+      </keep-alive>
     </template>
   </main>
 </div>

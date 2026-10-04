@@ -22,6 +22,7 @@ const API = {
     body: JSON.stringify(body),
   }),
   listTasks: () => api('/api/tasks'),
+  deleteTask: (id) => api(`/api/tasks/${id}`, { method: 'DELETE' }),
   getTask: (id) => api(`/api/tasks/${id}`),
   getEvents: (id) => api(`/api/tasks/${id}/events`),
   getResult: (id) => api(`/api/tasks/${id}/result`),
@@ -31,6 +32,7 @@ const API = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ decision }),
   }),
+  retryTask: (id) => api(`/api/tasks/${id}/retry`, { method: 'POST' }),
   kbSearch: (q, k = 8) => api(`/api/kb/search?q=${encodeURIComponent(q)}&k=${k}`),
 };
 
@@ -77,21 +79,42 @@ const StatusPill = {
 
 const TimelinePanel = {
   props: { events: Array, polling: Boolean },
-  methods: { eventClass },
+  methods: {
+    eventClass,
+    // 时间戳兼容两种历史格式: "09:12:03" 与 "2026-10-04 09:12:03"
+    hasDate(ts) { return /\d{4}-\d{2}-\d{2}/.test(String(ts || '')); },
+    dateOf(ts) { return String(ts || '').slice(0, 10); },
+    timeOf(ts) {
+      const m = String(ts || '').match(/(\d{2}:\d{2}:\d{2})/);
+      return m ? m[1] : (ts || '');
+    },
+    dateChanged(i) {
+      const ev = this.events[i];
+      if (!this.hasDate(ev.ts)) return false;
+      if (i === 0) return true;   // 首条带日期就展示，跨天一目了然
+      return this.dateOf(ev.ts) !== this.dateOf(this.events[i - 1].ts);
+    },
+  },
   template: `
     <div>
-      <div class="tl-wrap">
-        <div v-if="!events.length" class="tl-empty">暂无执行记录，等待 Agent 启动…</div>
-        <div v-for="(ev, i) in events" :key="i" class="tl-card" :class="eventClass(ev)">
-          <div class="tl-head">
-            <span class="tl-node">{{ ev.node }}</span>
-            <span class="tl-agent">{{ ev.agent }}</span>
-            <span v-if="ev.status==='error'" style="color:var(--c-error)">异常</span>
-            <span class="tl-time">{{ ev.ts }}</span>
+      <div v-if="!events.length" class="tl-empty">暂无执行记录，等待 Agent 启动…</div>
+      <div v-else class="tl-rail">
+        <template v-for="(ev, i) in events" :key="i">
+          <div v-if="dateChanged(i)" class="tl-date">{{ dateOf(ev.ts) }}</div>
+          <div class="tl-entry" :class="eventClass(ev)">
+            <span class="tl-dot" aria-hidden="true"></span>
+            <div class="tl-body">
+              <div class="tl-head">
+                <span class="tl-node">{{ ev.node }}</span>
+                <span class="tl-agent">{{ ev.agent }}</span>
+                <span v-if="ev.status==='error'" class="tl-flag">异常</span>
+                <span class="tl-time" :title="ev.ts">{{ timeOf(ev.ts) }}</span>
+              </div>
+              <div class="tl-task">{{ ev.task_desc || ev.task }}</div>
+              <div class="tl-detail" :class="{'tl-error-text': ev.status==='error'}">{{ ev.detail }}</div>
+            </div>
           </div>
-          <div class="tl-task">{{ ev.task_desc || ev.task }}</div>
-          <div class="tl-detail" :class="{'tl-error-text': ev.status==='error'}">{{ ev.detail }}</div>
-        </div>
+        </template>
       </div>
       <p v-if="polling" class="tl-polling"><span class="dot"></span>实时刷新中…</p>
     </div>`,
@@ -103,12 +126,17 @@ const ReportPanel = {
   computed: {
     renderedHtml() { return renderMarkdown(this.report); },
   },
-  watch: { refreshKey() { this.load(); } },
+  watch: {
+    refreshKey() { this.load(); },
+    // keep-alive 下切换任务不会重建组件，改通过 watch 重新加载
+    taskId() { this.load(); },
+  },
   created() { this.load(); },
   methods: {
     async load() {
-      this.loading = true;
       this.error = '';
+      // 已有内容时静默刷新（不清空、不显示"加载中"），避免整块报告闪烁
+      if (!this.report && !this.findings.length) this.loading = true;
       try {
         const data = await API.getResult(this.taskId);
         this.report = data.report || '';
@@ -138,7 +166,7 @@ const ReportPanel = {
             <button class="btn ghost" @click="download">下载报告 (Markdown)</button>
           </div>
           <div class="report-md" v-html="renderedHtml"></div>
-          <h3 style="margin-top:28px">📎 情报明细（{{ findings.length }} 条）</h3>
+          <h3 class="findings-title">情报明细（{{ findings.length }} 条）</h3>
           <div v-for="(f, i) in findings" :key="i" class="finding-item">
             <div class="finding-head">
               <span class="finding-team">[{{ f.team }}/{{ f.agent }}]</span>
@@ -226,18 +254,18 @@ const ApprovalPanel = {
   },
   template: `
     <div class="approval-panel">
-      <div class="approval-banner">⏸ 报告草稿已生成，等待人工审批（状态已持久化，刷新页面不丢失）</div>
+      <div class="approval-banner">报告草稿已生成，等待人工审批。审批状态已持久化，刷新或重启后仍可继续。</div>
       <p v-if="error" class="form-error">{{ error }}</p>
 
       <div v-if="risks.length" class="risk-list">
-        <h3>⚠️ 风控组风险信号（{{ risks.length }} 条）</h3>
+        <h3>风控组风险信号（{{ risks.length }} 条）</h3>
         <div v-for="(f, i) in risks" :key="i" class="risk-item">
           <b>{{ f.agent }}</b> — {{ (f.content || '').slice(0, 300) }}
         </div>
       </div>
 
       <details open>
-        <summary style="cursor:pointer;margin-bottom:8px">📄 报告草稿（点击展开/收起）</summary>
+        <summary class="draft-summary">报告草稿（点击展开/收起）</summary>
         <div class="report-md" v-html="rendered"></div>
       </details>
 
@@ -247,10 +275,10 @@ const ApprovalPanel = {
                     placeholder="例如：补充对供应链集中度风险的分析…"></textarea>
         </label>
         <div class="approval-buttons">
-          <button class="btn primary" style="flex:1" :disabled="submitting"
-                  @click="decide('approve')">✅ 通过，生成最终报告</button>
-          <button class="btn ghost" style="flex:1" :disabled="submitting"
-                  @click="decide('revise')">📝 按修改意见重新生成</button>
+          <button class="btn primary" :disabled="submitting"
+                  @click="decide('approve')">通过，生成最终报告</button>
+          <button class="btn ghost" :disabled="submitting"
+                  @click="decide('revise')">按修改意见重新生成</button>
         </div>
       </div>
     </div>`,
@@ -272,9 +300,9 @@ createApp({
     events: [],
     activeTab: 'timeline',
     tabs: [
-      { key: 'timeline', label: '🛰️ Agent 时间线' },
-      { key: 'report', label: '📄 调研报告' },
-      { key: 'kb', label: '📚 情报知识库' },
+      { key: 'timeline', label: 'Agent 时间线' },
+      { key: 'report', label: '调研报告' },
+      { key: 'kb', label: '情报知识库' },
     ],
     polling: false,
     pollTimer: null,
@@ -335,6 +363,31 @@ createApp({
       this.events = [];
       await this.loadEvents();
       if (['running', 'awaiting_approval'].includes(t.status)) this.startPolling();
+    },
+    async delTask(t) {
+      if (!confirm(`删除任务「${t.company}」（${t.created_at}）？\n其时间线、报告与明细将一并删除，不可恢复。`)) return;
+      try {
+        await API.deleteTask(t.id);
+        if (this.current && this.current.id === t.id) {
+          this.stopPolling();
+          this.current = null;
+        }
+        await this.refreshTasks();
+      } catch (e) {
+        alert(`删除失败: ${e.message}`);
+      }
+    },
+    async retryTask(t) {
+      if (!confirm(`从断点重试任务「${t.company}」？\n将跳过已完成节点，从失败处继续执行。`)) return;
+      try {
+        await API.retryTask(t.id);
+        await this.refreshTasks();
+        const fresh = this.tasks.find((x) => x.id === t.id);
+        if (fresh) await this.selectTask(fresh);
+        this.activeTab = 'timeline';
+      } catch (e) {
+        alert(`重试失败: ${e.message}`);
+      }
     },
     async loadEvents() {
       if (!this.current) return;
