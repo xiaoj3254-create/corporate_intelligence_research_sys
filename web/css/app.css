@@ -1,29 +1,32 @@
 /* ============================================================
-   企业情报调研系统 · 设计 token（暗色）
+   企业情报调研系统 · 设计 token（亮色）
    视觉主张: 语义色承载信息 —— 颜色即分类，不做纯装饰。
    用力点唯一: 时间线轨道。其余安静。
+   亮色版: 中性色换冷调纸灰家族（与原暗色同血统的昼夜对偶），
+   语义色色相不变、明度压深一档（白底 4.5:1 对比底线）。
    ============================================================ */
 :root {
-  /* 中性面板 */
-  --bg: #10141a;
-  --panel: #171d26;
-  --panel-2: #1d242f;
-  --border: #2a3341;
-  --text: #e6edf3;
-  --muted: #8b98a5;
+  /* 中性面板: 页面底 / 卡片 / 内嵌输入区 */
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --panel-2: #eef2f7;
+  --border: #d4dce6;
+  --border-strong: #b9c5d3;      /* 轨道线等需要更强可见度的结构线 */
+  --text: #1a2430;
+  --muted: #5b6b7c;
 
-  /* 语义色: 团队/状态（brief 既定，不动） */
-  --c-collection: #3b82f6;   /* 蓝 · 搜集/信息 */
-  --c-analysis:  #a78bfa;   /* 紫 · 分析 */
-  --c-risk:      #f59e0b;   /* 琥珀 · 风险/待审批 */
-  --c-deep:      #2dd4bf;   /* 青 · 深度研究 */
-  --c-system:    #94a3b8;   /* 灰 · 系统/规划 */
-  --c-error:     #ef4444;   /* 红 · 失败 */
-  --c-ok:        #34d399;   /* 绿 · 完成 */
+  /* 语义色: 团队/状态（分类职能不变；值为白底可读的深档） */
+  --c-collection: #2563eb;   /* 蓝 · 搜集/信息 */
+  --c-analysis:  #7c3aed;   /* 紫 · 分析 */
+  --c-risk:      #b45309;   /* 琥珀 · 风险/待审批 */
+  --c-deep:      #0f766e;   /* 青 · 深度研究 */
+  --c-system:    #64748b;   /* 灰 · 系统/规划 */
+  --c-error:     #dc2626;   /* 红 · 失败 */
+  --c-ok:        #047857;   /* 绿 · 完成 */
 
   /* accent 只用于: 当前选中态 + 主按钮 */
-  --accent: #2dd4bf;
-  --accent-ink: #062b26;
+  --accent: #0f766e;
+  --accent-ink: #ffffff;
 
   /* 版式 */
   --radius: 10px;
@@ -79,7 +82,7 @@ body {
 .brand p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
 
 .panel {
-  background: var(--panel-2);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
@@ -163,16 +166,16 @@ textarea { resize: vertical; }
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 .task-list::-webkit-scrollbar { width: 6px; }
-.task-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.task-list::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 .task-list .empty { color: var(--muted); font-size: 12px; padding: 4px; }
 
 .task-item {
   width: 100%;
   text-align: left;
-  background: var(--panel-2);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -312,7 +315,7 @@ textarea { resize: vertical; }
 }
 .tl-date::after {
   content: "";
-  background: var(--border);
+  background: var(--border-strong);
   display: inline-block;
   height: 1px;
   margin-left: 10px;
@@ -332,7 +335,7 @@ textarea { resize: vertical; }
   top: 14px;
   bottom: -4px;
   width: 2px;
-  background: var(--border);
+  background: var(--border-strong);
 }
 .tl-entry:last-child::before { display: none; }
 
@@ -450,7 +453,7 @@ textarea { resize: vertical; }
 
 /* ---------------- 审批 ---------------- */
 .approval-banner {
-  background: #241d10;
+  background: #fdf3e3;
   border: 1px solid var(--c-risk);
   border-radius: var(--radius);
   color: var(--c-risk);
