@@ -12,11 +12,8 @@
   <!-- 侧栏：发起调研 + 历史任务 -->
   <aside class="sidebar">
     <div class="brand">
-      <span class="brand-mark">🔎</span>
-      <div>
-        <h1>企业情报调研</h1>
-        <p>多 Agent 调研工作台</p>
-      </div>
+      <h1>企业情报调研</h1>
+      <p>多 Agent 调研工作台</p>
     </div>
 
     <form class="panel new-task" @submit.prevent="submitTask">
@@ -42,7 +39,7 @@
       <p v-if="formError" class="form-error">{{ formError }}</p>
     </form>
 
-    <h2 class="side-title">历史任务</h2>
+    <h2 class="side-title">历史任务<span class="side-count" v-if="tasks.length">{{ tasks.length }}</span></h2>
     <ul class="task-list">
       <li v-if="!tasks.length" class="empty">暂无历史任务</li>
       <li v-for="t in tasks" :key="t.id">

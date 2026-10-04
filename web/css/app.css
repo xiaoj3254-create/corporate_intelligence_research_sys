@@ -76,10 +76,18 @@ body {
   overflow: hidden;               /* 滚动交给内部任务列表 */
 }
 
-.brand { display: flex; gap: 10px; align-items: center; }
-.brand-mark { font-size: 24px; }
-.brand h1 { font-size: 16px; margin: 0; }
-.brand p { margin: 2px 0 0; font-size: 11px; color: var(--muted); }
+/* 品牌区: 纯文字 + 左侧 accent 竖条（与全站左色条结构词汇一致） */
+.brand {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+}
+.brand h1 {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: .01em;
+  margin: 0;
+}
+.brand p { margin: 3px 0 0; font-size: 11px; color: var(--muted); }
 
 .panel {
   background: var(--panel);
@@ -147,12 +155,22 @@ textarea { resize: vertical; }
 
 .form-error { color: var(--c-error); font-size: 12px; margin: 0; }
 
-/* 历史任务: 标题固定，列表占满剩余高度独立滚动 */
+/* 历史任务: 标题固定 + 计数，列表占满剩余高度独立滚动 */
 .side-title {
+  align-items: center;
+  display: flex;
   font-size: 12px;
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--text);
+  gap: 8px;
   margin: 4px 0 0;
   flex-shrink: 0;
+}
+.side-count {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 400;
 }
 
 .task-list {
