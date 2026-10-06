@@ -9,8 +9,9 @@
 - 时间线/报告/知识库查询（前端轮询）
 - interrupt 审批快照 + resume
 
-并发说明: SqliteSaver 的 SQLite 连接不保证跨线程并发安全，
-演示/单机场景用全局锁串行化"图执行"，查询接口不受影响。
+并发说明: 每个后台任务使用独立连接的 checkpointer（WAL 模式），
+多个调研可真正并行执行；intel.db 的写由 db 模块级锁串行化，
+图状态读取（审批快照等）走共享只读图。
 """
 import json
 import logging
@@ -29,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from engine.config import settings
 from engine.graph import build_graph
+from engine.teams.common import TEAM_NODES, set_event_sink
 from langgraph.types import Command
 from storage import db
 
@@ -47,14 +49,32 @@ async def lifespan(_app: FastAPI):
                     settings.embedding_model, settings.embedding_base_url)
     else:
         logger.warning("未配置 EMBEDDING_API_KEY，知识库将使用纯 BM25 检索")
+    # 僵尸任务清理：启动时没有任何后台线程在执行，DB 里残留的 running
+    # 状态任务全部是上次进程中断的遗留，统一标记为 failed
+    n = db.fail_stale_running_tasks()
+    if n:
+        logger.warning("启动清理: %d 个遗留 running 任务（僵尸）已标记为 failed", n)
+    # 实时事件汇：团队子图内部事件即时落库（否则整个子图跑完前前端无输出）
+    set_event_sink(lambda task_id, ev: db.save_event(task_id, ev))
     yield
 
 
 app = FastAPI(title="企业情报调研系统 API", lifespan=lifespan)
 
-# 图执行全局锁：同一时刻只跑一次调研（checkpointer 连接非线程安全）
-_RUN_LOCK = threading.Lock()
-_graph = None
+# 图执行并发：每个后台任务使用独立连接的 checkpointer（db.new_checkpointer，
+# WAL 模式），可真正并行执行多个调研；intel.db 的写由 db 模块级 RLock 串行化。
+# get_state / delete_thread 等图状态操作走共享只读图，用 _STATE_LOCK 保护。
+_reader_graph = None
+_STATE_LOCK = threading.RLock()
+
+
+def _get_reader_graph():
+    """共享图（独立 checkpointer 连接）：用于 get_state / delete_thread。"""
+    global _reader_graph
+    if _reader_graph is None:
+        _reader_graph = build_graph(checkpointer=db.new_checkpointer())
+    return _reader_graph
+
 
 # kb_search 专用常驻线程池。不能用 with ThreadPoolExecutor(...)：
 # 其 __exit__ 的 shutdown(wait=True) 会阻塞到检索线程真正结束，
@@ -62,13 +82,6 @@ _graph = None
 # 孤儿线程由 embedding 请求自身的 timeout=30 兜底结束；
 # max_workers=2 允许一个卡死的检索期间新请求仍可入队执行。
 _KB_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="kb-search")
-
-
-def _get_graph():
-    global _graph
-    if _graph is None:
-        _graph = build_graph(checkpointer=db.get_checkpointer())
-    return _graph
 
 
 def _now() -> str:
@@ -90,7 +103,11 @@ def _save_event(task_id: str, node: str, agent: str, task: str,
 
 
 def _drain(task_id: str, thread_id: str, stream) -> bool:
-    """消费事件流：逐条落库（前端轮询即可"实时"）。返回是否 interrupt 暂停。"""
+    """消费事件流：逐条落库（前端轮询即可"实时"）。返回是否 interrupt 暂停。
+
+    团队节点（TEAM_NODES）的 timeline 事件已由实时事件汇在子图内部落库，
+    这里跳过避免重复写入。
+    """
     interrupted = False
     for chunk in stream:
         for node, update in chunk.items():
@@ -100,6 +117,8 @@ def _drain(task_id: str, thread_id: str, stream) -> bool:
                             "pending", "系统已暂停，等待人工审批（interrupt）")
                 continue
             if not isinstance(update, dict) or not update:
+                continue
+            if node in TEAM_NODES:
                 continue
             for ev in update.get("timeline") or []:
                 ev.setdefault("ts", _now())
@@ -112,26 +131,35 @@ def _drain(task_id: str, thread_id: str, stream) -> bool:
 
 
 def _run_background(task_id: str, thread_id: str, company: str, objective: str,
-                    mode: str, auto_approve: bool, resume_decision: str = None):
+                    mode: str, auto_approve: bool, resume_decision: str = None,
+                    retry: bool = False):
     """后台线程：跑（或恢复跑）一次调研，维护任务状态机。
 
-    状态: running → awaiting_approval | completed | failed
+    每次执行使用独立连接的 checkpointer（WAL），多任务可真正并行；
+    结束后关闭连接。状态: running → awaiting_approval | completed | failed
+
+    retry=True: 失败任务从断点续跑——SqliteSaver 在每个节点完成后持久化
+    状态，stream(None) 会从最后一个成功节点继续（失败的节点重执行）。
+    注意: 失败若发生在团队节点内部，该团队子图整体重跑（子图内部
+    进度不落检查点），其之前的进度仍然保留。
     """
+    saver = db.new_checkpointer()
     try:
-        with _RUN_LOCK:
-            graph = _get_graph()
-            if resume_decision is None:
-                inputs = {
-                    "company": company, "objective": objective, "mode": mode,
-                    "task_id": task_id, "thread_id": thread_id,
-                    "auto_approve": auto_approve,
-                    "plan": [], "findings": [], "timeline": [], "research_round": 0,
-                }
-                stream = graph.stream(inputs, _config(thread_id), stream_mode="updates")
-            else:
-                stream = graph.stream(Command(resume=resume_decision),
-                                      _config(thread_id), stream_mode="updates")
-            interrupted = _drain(task_id, thread_id, stream)
+        graph = build_graph(checkpointer=saver)
+        if retry:
+            stream = graph.stream(None, _config(thread_id), stream_mode="updates")
+        elif resume_decision is None:
+            inputs = {
+                "company": company, "objective": objective, "mode": mode,
+                "task_id": task_id, "thread_id": thread_id,
+                "auto_approve": auto_approve,
+                "plan": [], "findings": [], "timeline": [], "research_round": 0,
+            }
+            stream = graph.stream(inputs, _config(thread_id), stream_mode="updates")
+        else:
+            stream = graph.stream(Command(resume=resume_decision),
+                                  _config(thread_id), stream_mode="updates")
+        interrupted = _drain(task_id, thread_id, stream)
 
         if interrupted and not auto_approve:
             db.set_task_status(task_id, "awaiting_approval")
@@ -142,6 +170,11 @@ def _run_background(task_id: str, thread_id: str, company: str, objective: str,
         _save_event(task_id, "system", "system", "执行异常", "error", str(e)[:500])
         try:
             db.set_task_status(task_id, "failed")
+        except Exception:
+            pass
+    finally:
+        try:
+            saver.conn.close()
         except Exception:
             pass
 
@@ -194,6 +227,27 @@ def get_task(task_id: str):
     return task
 
 
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: str):
+    task = db.get_task(task_id)
+    if not task:
+        raise HTTPException(404, "任务不存在")
+    if task["status"] == "running":
+        # 后台线程可能仍在写事件/发现，删除会导致脏数据与竞态。
+        # 若线程真已卡死，重启服务即可：启动时会将遗留 running 任务标记为 failed
+        raise HTTPException(
+            409, "任务正在执行中，无法删除；若确认已卡死，请重启服务后再删除")
+    # 尽力清理 LangGraph checkpointer 中的持久化状态（interrupt 快照等）。
+    # 走共享只读图（独立连接），_STATE_LOCK 防止并发使用同一条读连接
+    try:
+        with _STATE_LOCK:
+            _get_reader_graph().checkpointer.delete_thread(task["thread_id"])
+    except Exception as e:
+        logger.info("清理 checkpointer 状态失败 task_id=%s: %s", task_id, e)
+    db.delete_task(task_id)
+    return {"ok": True}
+
+
 @app.get("/api/tasks/{task_id}/events")
 def get_events(task_id: str):
     return db.list_events(task_id)
@@ -220,17 +274,10 @@ def get_approval(task_id: str):
     if not task:
         raise HTTPException(404, "任务不存在")
     try:
-        graph = _get_graph()
-        # get_state 与后台 stream 共享同一个 SqliteSaver 连接（非线程安全）。
-        # 用带超时的 _RUN_LOCK 竞争：任务执行中拿不到锁（~2s）直接按"未在
-        # 审批点"返回——此时本就不存在可审批的 interrupt；awaiting_approval
-        # 期间无 stream 在跑，锁必然可立即获取，读到真实快照。
-        if not _RUN_LOCK.acquire(timeout=2):
-            return {"awaiting": False, "draft": "", "findings": []}
-        try:
-            snap = graph.get_state(_config(task["thread_id"]))
-        finally:
-            _RUN_LOCK.release()
+        # get_state 走共享只读图（独立连接），与后台任务的写连接经 WAL 隔离；
+        # _STATE_LOCK 防止多请求线程并发使用同一条读连接
+        with _STATE_LOCK:
+            snap = _get_reader_graph().get_state(_config(task["thread_id"]))
         awaiting = "human_review" in (snap.next or ())
         vals = snap.values or {}
         return {"awaiting": awaiting,
@@ -257,6 +304,32 @@ def resume_task(task_id: str, body: Decision):
         args=(task_id, task["thread_id"], task["company"], task["objective"],
               task["mode"], False, body.decision.strip()),
         daemon=True, name=f"resume-{task_id}")
+    t.start()
+    return {"ok": True}
+
+
+@app.post("/api/tasks/{task_id}/retry")
+def retry_task(task_id: str):
+    """失败任务从断点续跑：从检查点中最后一个成功节点继续执行。
+
+    注意: 失败发生在团队子图内部时，该团队节点整体重跑（子图内部
+    进度不落检查点），但此前已完成的其他节点不会重复执行。
+    """
+    task = db.get_task(task_id)
+    if not task:
+        raise HTTPException(404, "任务不存在")
+    if task["status"] != "failed":
+        raise HTTPException(
+            409, f"任务当前状态为 {task['status']}，仅 failed 状态可重试")
+    db.set_task_status(task_id, "running")
+    _save_event(task_id, "system", "system", "手动重试",
+                "pending", "从断点恢复：跳过已完成节点，从失败处继续执行")
+    t = threading.Thread(
+        target=_run_background,
+        args=(task_id, task["thread_id"], task["company"], task["objective"],
+              task["mode"], False),
+        kwargs={"retry": True},
+        daemon=True, name=f"retry-{task_id}")
     t.start()
     return {"ok": True}
 

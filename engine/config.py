@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     # 搜索
     tavily_api_key: str = ""
+    # Firecrawl（搜索降级第二通道：Tavily 异常时启用；不配则直接降级模拟数据）
+    firecrawl_api_key: str = ""
+    firecrawl_base_url: str = "https://api.firecrawl.dev/v1"
 
     # Embedding（OpenAI 兼容的第三方 API，用于 Chroma 向量检索）
     # 示例（硅基流动，bge-m3 免费）: EMBEDDING_API_KEY=sk-xxx
@@ -36,12 +39,17 @@ class Settings(BaseSettings):
     max_research_rounds: int = 3      # 深度模式反思循环上限
     max_team_revise: int = 2          # 团队子图内部修订上限
     max_workers_tasks: int = 4        # 组长单次拆解任务数上限
+    max_worker_tool_calls: int = 6    # worker ReAct 工具调用轮数上限（防长循环拖慢）
+    tool_output_max_chars: int = 2500  # 单次工具输出截断长度（防 ReAct 上下文膨胀）
     recursion_limit: int = 80         # LangGraph 递归上限
 
     # 存储
     data_dir: str = "data"
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # env_file_encoding 用 utf-8-sig：容忍编辑器保存时加 UTF-8 BOM
+    # （此前 BOM 会把首个变量名变成 \ufeffOPENAI_API_KEY 导致 Key 加载不到）
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8-sig",
+                                      extra="ignore")
 
 
 settings = Settings()

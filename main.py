@@ -15,21 +15,39 @@ from langgraph.types import Command  # noqa: E402
 
 from engine.config import settings  # noqa: E402
 from engine.graph import build_graph  # noqa: E402
+from engine.teams.common import TEAM_NODES, set_event_sink  # noqa: E402
 from storage import db  # noqa: E402
 
 
+def _print_ev(ev: dict):
+    print(f"  [{ev.get('ts', '')}] {ev.get('node', ''):<16} "
+          f"| {ev.get('agent', ''):<14} | {ev.get('task', '')} "
+          f"| {ev.get('detail', '')}")
+
+
+def _cli_sink(task_id: str, ev: dict):
+    """实时事件汇：团队子图内部事件即时打印，不等整个子图跑完。"""
+    try:
+        _print_ev(ev)
+    except Exception:
+        pass
+
+
 def _drain(stream) -> bool:
-    """消费图的事件流，打印时间线；返回是否因人工审批而暂停。"""
+    """消费图的事件流，打印时间线；返回是否因人工审批而暂停。
+
+    团队节点（TEAM_NODES）的事件已由实时事件汇打印，这里跳过避免重复。
+    """
     for chunk in stream:
         for node, update in chunk.items():
             if node == "__interrupt__":
                 print("\n[⏸ interrupt] 报告待人工审批，图已暂停（状态已持久化）\n")
                 return True
             if isinstance(update, dict):
+                if node in TEAM_NODES:
+                    continue
                 for ev in update.get("timeline", []):
-                    print(f"  [{ev.get('ts', '')}] {ev.get('node', ''):<16} "
-                          f"| {ev.get('agent', ''):<14} | {ev.get('task', '')} "
-                          f"| {ev.get('detail', '')}")
+                    _print_ev(ev)
     return False
 
 
@@ -62,6 +80,7 @@ def main():
     }
 
     print(f"▶ 开始调研: {args.company}（模式: {args.mode}）\n")
+    set_event_sink(_cli_sink)
     interrupted = _drain(graph.stream(inputs, config, stream_mode="updates"))
 
     # 多轮审批循环：输入修改意见后 synthesizer 会重新起草并再次 interrupt，

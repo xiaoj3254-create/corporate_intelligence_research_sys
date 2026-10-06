@@ -23,12 +23,16 @@ from engine.teams.risk_team import risk_team_node
 
 
 def _fan_out_analysis_risk(state: dict):
-    """B 模式固定 fan-out：分析组与风控组并行，各自携带搜集组的 findings 作为上游输入。"""
+    """B 模式固定 fan-out：分析组与风控组并行，各自携带搜集组的 findings 作为上游输入。
+
+    task_id 必须随 Send 下发：wrap_team 的事件实时外推（sink）依赖它定位任务。
+    """
     base = {
         "company": state["company"],
         "objective": state.get("objective", ""),
         "prior_findings": [f for f in state.get("findings") or []
                            if f.team == "collection"],
+        "task_id": state.get("task_id", ""),
     }
     return [Send("analysis_team", {**base}), Send("risk_team", {**base})]
 

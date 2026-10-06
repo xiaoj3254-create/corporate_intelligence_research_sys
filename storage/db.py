@@ -59,6 +59,23 @@ def get_checkpointer():
         return SqliteSaver(_cp_conn)
 
 
+def new_checkpointer():
+    """新建独立连接的 SqliteSaver（WAL 模式）。
+
+    每个后台调研任务专用一个连接，任务结束由调用方关闭：
+    此前全局单连接非线程安全，只能靠 _RUN_LOCK 把图执行串行化，
+    第二个任务会静默排队数分钟。WAL 允许多连接并发读写。
+    """
+    from langgraph.checkpoint.sqlite import SqliteSaver
+
+    os.makedirs(settings.data_dir, exist_ok=True)
+    conn = sqlite3.connect(
+        os.path.join(settings.data_dir, "checkpoints.sqlite"),
+        check_same_thread=False, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    return SqliteSaver(conn)
+
+
 # ---------------------------------------------------------------- tasks
 
 def create_task(task_id: str, thread_id: str, company: str, objective: str, mode: str):
@@ -81,6 +98,27 @@ def list_tasks(limit: int = 30):
         rows = get_conn().execute(
             "SELECT * FROM tasks ORDER BY created_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
+
+
+def delete_task(task_id: str):
+    """删除任务及其全部关联数据（时间线/发现/报告）。"""
+    with _lock:
+        conn = get_conn()
+        for table in ("task_events", "findings", "reports"):
+            conn.execute(f"DELETE FROM {table} WHERE task_id=?", (task_id,))
+        conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        conn.commit()
+
+
+def fail_stale_running_tasks() -> int:
+    """服务启动时清理僵尸任务：进程重启后 DB 中残留的 running 状态任务
+    必然没有线程在执行（后台线程随进程消亡），统一标记为 failed。
+    返回清理数量。"""
+    with _lock:
+        conn = get_conn()
+        cur = conn.execute("UPDATE tasks SET status='failed' WHERE status='running'")
+        conn.commit()
+        return cur.rowcount
 
 
 # ---------------------------------------------------------------- events

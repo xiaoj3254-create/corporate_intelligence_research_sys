@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1670" viewBox="0 0 1240 1670" font-family="Microsoft YaHei, PingFang SC, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0891b2"/>
+    </marker>
+    <marker id="arrAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1240" height="1670" fill="#ffffff"/>
+
+  <!-- 标题 -->
+  <text x="620" y="44" text-anchor="middle" font-size="21" font-weight="bold" fill="#1e293b">企业情报调研系统 · 图结构总览</text>
+  <text x="620" y="68" text-anchor="middle" font-size="13" fill="#64748b">engine/graph.py 双模式编排 · 团队子图 · 搜索降级链 · 知识库沉淀（2026-10-05 当前版本）</text>
+
+  <!-- 入口层 -->
+  <rect x="120" y="96" width="300" height="70" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="270" y="124" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e293b">Vue 3 前端（web/）</text>
+  <text x="270" y="147" text-anchor="middle" font-size="11" fill="#64748b">时间线 2s 轮询 · 审批 · 报告 · 知识库检索</text>
+  <line x1="420" y1="131" x2="514" y2="131" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="467" y="121" text-anchor="middle" font-size="11" fill="#64748b">REST</text>
+  <rect x="520" y="96" width="340" height="70" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="690" y="124" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e293b">FastAPI 后端（api.py）</text>
+  <text x="690" y="147" text-anchor="middle" font-size="11" fill="#64748b">后台线程跑图 · 事件实时落库 · resume / retry</text>
+  <line x1="690" y1="166" x2="690" y2="234" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="700" y="205" font-size="11" fill="#64748b">graph.stream()</text>
+
+  <!-- 主图容器 -->
+  <rect x="60" y="240" width="1120" height="800" rx="14" fill="#fbfcfe" stroke="#cbd5e1"/>
+  <text x="84" y="268" font-size="14" font-weight="bold" fill="#334155">LangGraph 主图 · engine/graph.py（B 标准 / C 深度 双模式）</text>
+
+  <!-- 图例 -->
+  <rect x="852" y="256" width="12" height="12" rx="2" fill="#e8f1fd" stroke="#3b82f6"/>
+  <text x="870" y="266" font-size="10.5" fill="#475569">搜集</text>
+  <rect x="912" y="256" width="12" height="12" rx="2" fill="#f3e8ff" stroke="#8b5cf6"/>
+  <text x="930" y="266" font-size="10.5" fill="#475569">分析</text>
+  <rect x="972" y="256" width="12" height="12" rx="2" fill="#fef3c7" stroke="#d97706"/>
+  <text x="990" y="266" font-size="10.5" fill="#475569">风控</text>
+  <rect x="1032" y="256" width="12" height="12" rx="2" fill="#e0f2fe" stroke="#0891b2"/>
+  <text x="1050" y="266" font-size="10.5" fill="#475569">深度</text>
+  <rect x="1092" y="256" width="12" height="12" rx="2" fill="#f1f5f9" stroke="#475569"/>
+  <text x="1110" y="266" font-size="10.5" fill="#475569">公共</text>
+
+  <!-- START / intake -->
+  <circle cx="620" cy="300" r="15" fill="#334155"/>
+  <text x="620" y="304" text-anchor="middle" font-size="10" fill="#ffffff">START</text>
+  <line x1="620" y1="315" x2="620" y2="332" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="500" y="336" width="240" height="56" rx="10" fill="#f1f5f9" stroke="#475569"/>
+  <text x="620" y="359" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b">intake · 任务解析</text>
+  <text x="620" y="380" text-anchor="middle" font-size="11" fill="#64748b">目标 &gt; 10 字时跳过 LLM 精炼</text>
+
+  <!-- 分流 -->
+  <path d="M620,392 V412 H250 V432" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <path d="M620,392 V412 H930 V432" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="390" y="406" text-anchor="middle" font-size="12" font-weight="bold" fill="#2563eb">standard（分层团队）</text>
+  <text x="880" y="406" text-anchor="middle" font-size="12" font-weight="bold" fill="#0891b2">deep（深度研究）</text>
+
+  <!-- standard 分支 -->
+  <rect x="110" y="436" width="280" height="64" rx="10" fill="#e8f1fd" stroke="#3b82f6"/>
+  <text x="250" y="462" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e3a8a">collection_team 搜集组</text>
+  <text x="250" y="484" text-anchor="middle" font-size="11" fill="#475569">search / registry / patent worker</text>
+  <path d="M250,500 V528 H185 V572" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <path d="M250,500 V528 H455 V572" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="352" y="522" text-anchor="middle" font-size="11" fill="#64748b">Send 并行</text>
+  <rect x="60" y="576" width="250" height="60" rx="10" fill="#f3e8ff" stroke="#8b5cf6"/>
+  <text x="185" y="601" text-anchor="middle" font-size="14" font-weight="bold" fill="#5b21b6">analysis_team 分析组</text>
+  <text x="185" y="622" text-anchor="middle" font-size="11" fill="#475569">finance · market</text>
+  <rect x="330" y="576" width="250" height="60" rx="10" fill="#fef3c7" stroke="#d97706"/>
+  <text x="455" y="601" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">risk_team 风控组</text>
+  <text x="455" y="622" text-anchor="middle" font-size="11" fill="#475569">compliance 风险扫描</text>
+  <path d="M185,636 V690 H560 V716" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <path d="M455,636 V690 H680 V716" fill="none" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- deep 分支 -->
+  <rect x="810" y="436" width="240" height="60" rx="10" fill="#e0f2fe" stroke="#0891b2"/>
+  <text x="930" y="460" text-anchor="middle" font-size="14" font-weight="bold" fill="#155e75">deep_planner 规划器</text>
+  <text x="930" y="482" text-anchor="middle" font-size="11" fill="#475569">3-6 子问题 / gap 补充</text>
+  <line x1="930" y1="496" x2="930" y2="532" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="810" y="536" width="240" height="52" rx="10" fill="#e0f2fe" stroke="#0891b2"/>
+  <text x="930" y="558" text-anchor="middle" font-size="14" font-weight="bold" fill="#155e75">researcher × N</text>
+  <text x="930" y="578" text-anchor="middle" font-size="11" fill="#475569">Send 动态并行 · 每实例一个子问题</text>
+  <line x1="930" y1="588" x2="930" y2="624" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="810" y="628" width="240" height="56" rx="10" fill="#e0f2fe" stroke="#0891b2"/>
+  <text x="930" y="651" text-anchor="middle" font-size="14" font-weight="bold" fill="#155e75">critic 反思质检</text>
+  <text x="930" y="672" text-anchor="middle" font-size="11" fill="#475569">覆盖度 / 证据 / 一致性 / 时效</text>
+  <path d="M810,656 H762 V466 H806" fill="none" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrBlue)"/>
+  <text x="754" y="566" text-anchor="end" font-size="11" fill="#0891b2">revise（≤ 3 轮）</text>
+  <path d="M930,684 V748 H814" fill="none" stroke="#0891b2" stroke-width="1.5" marker-end="url(#arrBlue)"/>
+  <text x="880" y="706" text-anchor="middle" font-size="11" fill="#0891b2">pass</text>
+
+  <!-- 汇合 -->
+  <rect x="430" y="720" width="380" height="60" rx="10" fill="#f1f5f9" stroke="#475569"/>
+  <text x="620" y="745" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b">synthesizer 综合起草</text>
+  <text x="620" y="767" text-anchor="middle" font-size="11" fill="#64748b">strong 模型 · 检索历史报告作结构参考 · 失败降级确定性简报</text>
+  <line x1="620" y1="780" x2="620" y2="812" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="450" y="816" width="340" height="60" rx="10" fill="#fffbeb" stroke="#d97706" stroke-dasharray="5,3"/>
+  <text x="620" y="840" text-anchor="middle" font-size="14" font-weight="bold" fill="#92400e">human_review 人工审批（interrupt）</text>
+  <text x="620" y="862" text-anchor="middle" font-size="11" fill="#92400e">图暂停 · 状态持久化 · 支持多轮修改意见</text>
+  <path d="M450,846 H408 V784" fill="none" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrAmber)"/>
+  <text x="400" y="820" text-anchor="end" font-size="11" fill="#b45309">revise 修改意见</text>
+  <line x1="620" y1="876" x2="620" y2="912" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="634" y="898" font-size="11" fill="#16a34a">approve</text>
+  <rect x="470" y="916" width="300" height="56" rx="10" fill="#f1f5f9" stroke="#475569"/>
+  <text x="620" y="939" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b">reporter 报告归档</text>
+  <text x="620" y="960" text-anchor="middle" font-size="11" fill="#64748b">SQLite 落库 + 知识库双写沉淀</text>
+  <line x1="620" y1="972" x2="620" y2="990" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <circle cx="620" cy="1006" r="15" fill="#334155"/>
+  <text x="620" y="1010" text-anchor="middle" font-size="10" fill="#ffffff">END</text>
+
+  <!-- 团队子图模板 -->
+  <rect x="60" y="1070" width="1120" height="230" rx="14" fill="#fbfcfe" stroke="#cbd5e1"/>
+  <text x="84" y="1098" font-size="14" font-weight="bold" fill="#334155">团队子图模板 · engine/teams/common.py</text>
+  <text x="410" y="1098" font-size="12" fill="#64748b">—— 上方 collection_team 的内部展开（三个团队共用此结构）</text>
+
+  <rect x="100" y="1120" width="250" height="64" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="225" y="1144" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#1e293b">lead_decompose 组长拆解</text>
+  <text x="225" y="1166" text-anchor="middle" font-size="11" fill="#64748b">cheap 模型 · 修订轮直接补做 missing</text>
+  <line x1="350" y1="1152" x2="424" y2="1152" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="388" y="1142" text-anchor="middle" font-size="11" fill="#64748b">Send</text>
+  <rect x="430" y="1112" width="300" height="130" rx="10" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="580" y="1136" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">组内 Send 并行 workers</text>
+  <text x="450" y="1162" font-size="10.5" fill="#475569">搜集组: search / registry / patent</text>
+  <text x="450" y="1182" font-size="10.5" fill="#475569">分析组: finance / market</text>
+  <text x="450" y="1202" font-size="10.5" fill="#475569">风控组: compliance</text>
+  <text x="450" y="1224" font-size="10.5" fill="#475569">工具: tavily_search / web_crawl / rag_retrieve</text>
+  <line x1="730" y1="1152" x2="804" y2="1152" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="810" y="1120" width="270" height="64" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="945" y="1144" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#1e293b">lead_review 组长质检</text>
+  <text x="945" y="1166" text-anchor="middle" font-size="11" fill="#64748b">默认通过 · 打回仅限实质性缺口</text>
+  <path d="M945,1184 V1256 H225 V1188" fill="none" stroke="#b45309" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arrAmber)"/>
+  <text x="585" y="1274" text-anchor="middle" font-size="11" fill="#b45309">revise：补做 missing 任务（≤ max_team_revise = 2 轮）</text>
+  <text x="84" y="1292" font-size="11" fill="#64748b">wrap_team 仅向主图回传 findings / timeline；子图内部事件经 set_event_sink 实时外推落库（前端 2s 轮询即可见）</text>
+
+  <!-- 工具与存储 -->
+  <rect x="60" y="1330" width="1120" height="300" rx="14" fill="#fbfcfe" stroke="#cbd5e1"/>
+  <text x="84" y="1358" font-size="14" font-weight="bold" fill="#334155">工具层 tools/ 与存储 · 知识库</text>
+
+  <rect x="100" y="1380" width="360" height="120" rx="10" fill="#ffffff" stroke="#3b82f6"/>
+  <text x="280" y="1406" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#1e3a8a">tavily_search 联网搜索（三级降级链）</text>
+  <rect x="120" y="1420" width="90" height="34" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
+  <text x="165" y="1442" text-anchor="middle" font-size="12" fill="#1e3a8a">Tavily</text>
+  <line x1="210" y1="1437" x2="232" y2="1437" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="234" y="1420" width="100" height="34" rx="6" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="284" y="1442" text-anchor="middle" font-size="12" fill="#854d0e">Firecrawl</text>
+  <line x1="334" y1="1437" x2="356" y2="1437" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <rect x="358" y="1420" width="84" height="34" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="400" y="1442" text-anchor="middle" font-size="12" fill="#475569">mock</text>
+  <text x="280" y="1480" text-anchor="middle" font-size="10.5" fill="#64748b">通道标记透传 · 成功写缓存 · mock 不缓存 · Firecrawl 15s 快速失败</text>
+
+  <rect x="100" y="1524" width="170" height="48" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="185" y="1544" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1e293b">web_crawl</text>
+  <text x="185" y="1562" text-anchor="middle" font-size="10.5" fill="#64748b">trafilatura 正文提取</text>
+  <rect x="290" y="1524" width="170" height="48" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="375" y="1544" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1e293b">rag_retrieve</text>
+  <text x="375" y="1562" text-anchor="middle" font-size="10.5" fill="#64748b">知识库混合检索工具</text>
+
+  <rect x="560" y="1380" width="270" height="64" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="695" y="1406" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">SQLite · intel.db</text>
+  <text x="695" y="1428" text-anchor="middle" font-size="10.5" fill="#64748b">任务 / 事件 / findings / 报告 / 搜索缓存</text>
+  <rect x="560" y="1460" width="270" height="64" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="695" y="1486" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">checkpoints.sqlite（WAL）</text>
+  <text x="695" y="1508" text-anchor="middle" font-size="10.5" fill="#64748b">LangGraph 检查点 · 审批快照 · 每任务独立连接</text>
+  <rect x="860" y="1380" width="290" height="144" rx="10" fill="#ffffff" stroke="#94a3b8"/>
+  <text x="1005" y="1406" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e293b">Chroma + FTS5 知识库</text>
+  <text x="880" y="1432" font-size="10.5" fill="#475569">intel_store（情报）/ reports_store（历史报告）</text>
+  <text x="880" y="1454" font-size="10.5" fill="#475569">向量召回 + BM25 → RRF 融合排序</text>
+  <text x="880" y="1476" font-size="10.5" fill="#475569">双写幂等（chunk_id = 内容 md5）</text>
+  <text x="880" y="1498" font-size="10.5" fill="#475569">synthesizer 检索历史报告作结构参考</text>
+  <path d="M580,1262 C560,1330 380,1330 282,1376" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="420" y="1332" text-anchor="middle" font-size="11" fill="#64748b">worker 工具调用</text>
+  <path d="M460,1548 H880 V1528" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+  <text x="670" y="1568" text-anchor="middle" font-size="11" fill="#64748b">检索 / 沉淀</text>
+  <text x="84" y="1608" font-size="11" fill="#94a3b8">注：reporter 将 findings 与最终报告双写 intel.db 与知识库；已知事项：FTS5 默认分词对中文召回弱（计划重建为 trigram）。</text>
+</svg>

@@ -23,6 +23,35 @@ def _ev(node, task, detail, status="done"):
             "status": status, "detail": detail, "ts": now_str()}
 
 
+# ---------------------------------------------------------------- 实时事件汇
+
+# 团队子图事件是"原子节点"内部产生的：wrap_team 若用 invoke，整个子图
+# （拆解 → 并行 workers → 质检 → 可能的修订轮，可持续数分钟）期间主图
+# stream 不会有任何输出。注册 sink 后事件在子图内部产生的瞬间即被外推。
+_event_sink = None
+
+
+def set_event_sink(cb):
+    """注册实时事件回调 cb(task_id, ev)；传 None 取消。
+
+    api 后端用它把事件即时落库供前端轮询；CLI 用它即时打印。
+    """
+    global _event_sink
+    _event_sink = cb
+
+
+def _emit_live(task_id, ev):
+    if _event_sink and task_id:
+        try:
+            _event_sink(task_id, ev)
+        except Exception:
+            pass
+
+
+# 这些主图节点的事件经 sink 实时外推，消费端 _drain 应跳过避免重复处理
+TEAM_NODES = frozenset({"collection_team", "analysis_team", "risk_team"})
+
+
 # ---------------------------------------------------------------- 组长拆解
 
 def _make_lead_decompose(team: str, allowed_types: list):
@@ -174,13 +203,26 @@ def wrap_team(subgraph):
 
     避免子图内部字段（tasks/quality_ok/...）污染父图状态；
     findings/timeline 经父图同名字段 + add_list reducer 自动合并。
+
+    用 stream 而非 invoke 消费子图：每个内部节点（含 Send 并行 worker）
+    完成的瞬间把其 timeline 事件推给 sink，实现实时外推。
     """
     def node(state: dict) -> dict:
-        result = subgraph.invoke(dict(state))
-        out = {}
-        if result.get("findings"):
-            out["findings"] = result["findings"]
-        if result.get("timeline"):
-            out["timeline"] = result["timeline"]
-        return out
+        task_id = state.get("task_id")
+        out = {"findings": [], "timeline": []}
+        for chunk in subgraph.stream(dict(state), stream_mode="updates"):
+            for _, update in chunk.items():
+                if not isinstance(update, dict) or not update:
+                    continue
+                out["findings"].extend(update.get("findings") or [])
+                evs = update.get("timeline") or []
+                out["timeline"].extend(evs)
+                for ev in evs:
+                    _emit_live(task_id, ev)
+        result = {}
+        if out["findings"]:
+            result["findings"] = out["findings"]
+        if out["timeline"]:
+            result["timeline"] = out["timeline"]
+        return result
     return node
