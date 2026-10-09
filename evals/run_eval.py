@@ -25,8 +25,11 @@ def run_research(graph, spec: dict):
     """跑完整调研（auto_approve 跳过人工审批），返回 (报告, task_id)。"""
     task_id = uuid.uuid4().hex[:12]
     thread_id = uuid.uuid4().hex
+    # kind='eval': 评估任务与正式任务同表存储（报告/发现照常落库可追溯），
+    # 但 list_tasks 会过滤，不污染前端任务历史
     db.create_task(task_id, thread_id, spec["company"],
-                   spec.get("objective", ""), spec.get("mode", "deep"))
+                   spec.get("objective", ""), spec.get("mode", "deep"),
+                   kind="eval")
     inputs = {
         "company": spec["company"],
         "objective": spec.get("objective", ""),

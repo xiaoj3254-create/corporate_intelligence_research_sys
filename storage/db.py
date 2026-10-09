@@ -20,6 +20,14 @@ _cp_conn = None
 _SCHEMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
 
 
+def _migrate(conn: sqlite3.Connection):
+    """轻量列迁移：schema.sql 只对新建库生效，旧库缺列时在此补齐（已存在则忽略）。"""
+    try:
+        conn.execute("ALTER TABLE tasks ADD COLUMN kind TEXT NOT NULL DEFAULT 'task'")
+    except sqlite3.OperationalError:
+        pass
+
+
 def get_conn() -> sqlite3.Connection:
     global _conn
     with _lock:
@@ -30,6 +38,7 @@ def get_conn() -> sqlite3.Connection:
             _conn.row_factory = sqlite3.Row
             with open(_SCHEMA_PATH, encoding="utf-8") as f:
                 _conn.executescript(f.read())
+            _migrate(_conn)
             _conn.commit()
         return _conn
 
@@ -78,9 +87,12 @@ def new_checkpointer():
 
 # ---------------------------------------------------------------- tasks
 
-def create_task(task_id: str, thread_id: str, company: str, objective: str, mode: str):
-    _write("INSERT INTO tasks (id, thread_id, company, objective, mode) VALUES (?,?,?,?,?)",
-           (task_id, thread_id, company, objective, mode))
+def create_task(task_id: str, thread_id: str, company: str, objective: str,
+                mode: str, kind: str = "task"):
+    """kind: 'task'=正式任务（列表可见）| 'eval'=评估任务（列表过滤）。"""
+    _write("INSERT INTO tasks (id, thread_id, company, objective, mode, kind) "
+           "VALUES (?,?,?,?,?,?)",
+           (task_id, thread_id, company, objective, mode, kind))
 
 
 def set_task_status(task_id: str, status: str):
@@ -94,9 +106,11 @@ def get_task(task_id: str):
 
 
 def list_tasks(limit: int = 30):
+    """任务历史（只含正式任务；eval 评估任务不入列表，避免污染前端）。"""
     with _lock:
         rows = get_conn().execute(
-            "SELECT * FROM tasks ORDER BY created_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
+            "SELECT * FROM tasks WHERE kind='task' "
+            "ORDER BY created_at DESC, id DESC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
 
 

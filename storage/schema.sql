@@ -1,4 +1,5 @@
 -- 任务表（thread_id 关联 LangGraph checkpointer，支持断点续跑）
+-- kind 区分正式任务(task)与评估任务(eval)：列表接口只展示前者
 CREATE TABLE IF NOT EXISTS tasks (
     id         TEXT PRIMARY KEY,
     thread_id  TEXT UNIQUE,
@@ -6,6 +7,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     objective  TEXT,
     mode       TEXT CHECK (mode IN ('standard', 'deep')),
     status     TEXT DEFAULT 'running',
+    kind       TEXT NOT NULL DEFAULT 'task',
     created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 

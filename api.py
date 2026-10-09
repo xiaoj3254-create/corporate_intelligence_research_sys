@@ -29,8 +29,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from engine.config import settings
+from engine.events import SINK_NODES, set_event_sink
 from engine.graph import build_graph
-from engine.teams.common import TEAM_NODES, set_event_sink
 from langgraph.types import Command
 from storage import db
 
@@ -105,8 +105,8 @@ def _save_event(task_id: str, node: str, agent: str, task: str,
 def _drain(task_id: str, thread_id: str, stream) -> bool:
     """消费事件流：逐条落库（前端轮询即可"实时"）。返回是否 interrupt 暂停。
 
-    团队节点（TEAM_NODES）的 timeline 事件已由实时事件汇在子图内部落库，
-    这里跳过避免重复写入。
+    经实时事件汇外推的节点（SINK_NODES）的 timeline 事件已在节点内部
+    落库，这里跳过避免重复写入。
     """
     interrupted = False
     for chunk in stream:
@@ -118,7 +118,7 @@ def _drain(task_id: str, thread_id: str, stream) -> bool:
                 continue
             if not isinstance(update, dict) or not update:
                 continue
-            if node in TEAM_NODES:
+            if node in SINK_NODES:
                 continue
             for ev in update.get("timeline") or []:
                 ev.setdefault("ts", _now())

@@ -38,11 +38,15 @@ def _fan_out_analysis_risk(state: dict):
 
 
 def _fan_out_researchers(state: dict):
-    """C 模式动态 fan-out：子问题数量运行时决定，开 N 个并行 researcher。"""
+    """C 模式动态 fan-out：子问题数量运行时决定，开 N 个并行 researcher。
+
+    task_id 必须随 Send 下发：researcher 的事件实时外推（sink）依赖它定位任务。
+    """
     return [Send("researcher", {
         "company": state["company"],
         "objective": state.get("objective", ""),
         "sub_q": sq,
+        "task_id": state.get("task_id", ""),
     }) for sq in state.get("plan") or []]
 
 

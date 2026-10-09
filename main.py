@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from langgraph.types import Command  # noqa: E402
 
 from engine.config import settings  # noqa: E402
+from engine.events import SINK_NODES, set_event_sink  # noqa: E402
 from engine.graph import build_graph  # noqa: E402
-from engine.teams.common import TEAM_NODES, set_event_sink  # noqa: E402
 from storage import db  # noqa: E402
 
 
@@ -36,7 +36,8 @@ def _cli_sink(task_id: str, ev: dict):
 def _drain(stream) -> bool:
     """消费图的事件流，打印时间线；返回是否因人工审批而暂停。
 
-    团队节点（TEAM_NODES）的事件已由实时事件汇打印，这里跳过避免重复。
+    经实时事件汇外推的节点（SINK_NODES）的事件已在节点内部打印，
+    这里跳过避免重复。
     """
     for chunk in stream:
         for node, update in chunk.items():
@@ -44,7 +45,7 @@ def _drain(stream) -> bool:
                 print("\n[⏸ interrupt] 报告待人工审批，图已暂停（状态已持久化）\n")
                 return True
             if isinstance(update, dict):
-                if node in TEAM_NODES:
+                if node in SINK_NODES:
                     continue
                 for ev in update.get("timeline", []):
                     _print_ev(ev)

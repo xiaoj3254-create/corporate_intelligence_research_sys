@@ -1,4 +1,5 @@
 """团队子图工厂：组长拆解 → Send 组内并行 → 组长质检（不足则组内修订）。"""
+import threading
 from dataclasses import dataclass
 
 from langgraph.graph import END, START, StateGraph
@@ -6,6 +7,7 @@ from langgraph.types import Send
 
 from engine.agents.react_workers import make_worker_agent, run_worker
 from engine.config import get_llm, settings
+from engine.events import emit_live
 from engine.prompts import TEAM_LEAD_DECOMPOSE_PROMPTS, TEAM_LEAD_REVIEW_PROMPT
 from engine.state import ReviewResult, Task, TaskList, TeamState, now_str
 
@@ -21,35 +23,6 @@ class WorkerSpec:
 def _ev(node, task, detail, status="done"):
     return {"node": node, "agent": node, "task": task,
             "status": status, "detail": detail, "ts": now_str()}
-
-
-# ---------------------------------------------------------------- 实时事件汇
-
-# 团队子图事件是"原子节点"内部产生的：wrap_team 若用 invoke，整个子图
-# （拆解 → 并行 workers → 质检 → 可能的修订轮，可持续数分钟）期间主图
-# stream 不会有任何输出。注册 sink 后事件在子图内部产生的瞬间即被外推。
-_event_sink = None
-
-
-def set_event_sink(cb):
-    """注册实时事件回调 cb(task_id, ev)；传 None 取消。
-
-    api 后端用它把事件即时落库供前端轮询；CLI 用它即时打印。
-    """
-    global _event_sink
-    _event_sink = cb
-
-
-def _emit_live(task_id, ev):
-    if _event_sink and task_id:
-        try:
-            _event_sink(task_id, ev)
-        except Exception:
-            pass
-
-
-# 这些主图节点的事件经 sink 实时外推，消费端 _drain 应跳过避免重复处理
-TEAM_NODES = frozenset({"collection_team", "analysis_team", "risk_team"})
 
 
 # ---------------------------------------------------------------- 组长拆解
@@ -93,13 +66,17 @@ def _make_lead_decompose(team: str, allowed_types: list):
 # ---------------------------------------------------------------- 组内 worker
 
 _worker_agents: dict = {}
+_worker_agents_lock = threading.Lock()
 
 
 def _get_worker_agent(spec: WorkerSpec):
-    """惰性构建 worker agent：支持测试时先注入 FakeChatModel 再跑图。"""
+    """惰性构建 worker agent（双检锁：Send 并行下可能同时首次触发）；
+    支持测试时先注入 FakeChatModel 再跑图。"""
     if spec.name not in _worker_agents:
-        _worker_agents[spec.name] = make_worker_agent(
-            spec.name, spec.tools, spec.system_prompt)
+        with _worker_agents_lock:
+            if spec.name not in _worker_agents:
+                _worker_agents[spec.name] = make_worker_agent(
+                    spec.name, spec.tools, spec.system_prompt)
     return _worker_agents[spec.name]
 
 
@@ -218,7 +195,7 @@ def wrap_team(subgraph):
                 evs = update.get("timeline") or []
                 out["timeline"].extend(evs)
                 for ev in evs:
-                    _emit_live(task_id, ev)
+                    emit_live(task_id, ev)
         result = {}
         if out["findings"]:
             result["findings"] = out["findings"]

@@ -140,3 +140,77 @@ def test_graph_compiles_with_expected_nodes():
                 "deep_planner", "researcher", "critic", "synthesizer",
                 "human_review", "reporter"}
     assert expected <= names, f"缺少节点: {expected - names}"
+
+
+# ---------------------------------------------------------------- worker 执行封装
+
+class _Msg:
+    """最小消息桩：只需 type / content / tool_calls 三个属性。"""
+
+    def __init__(self, type, content=None, tool_calls=None):
+        self.type = type
+        self.content = content
+        self.tool_calls = tool_calls
+
+
+def test_extract_urls_filters_mock_domain():
+    """mock.example.com 假链接不得作为来源（否则模拟数据会被评为高可信）。"""
+    from engine.agents.react_workers import extract_urls
+    msgs = [_Msg("tool", "https://mock.example.com/a1 "
+                          "https://real.example.com/a https://real.example.com/b")]
+    assert extract_urls(msgs) == ["https://real.example.com/a",
+                                  "https://real.example.com/b"]
+
+
+def test_credibility_of_url_count():
+    from engine.agents.react_workers import credibility_of
+    assert credibility_of(["u1", "u2"]) == "high"
+    assert credibility_of(["u1"]) == "medium"
+    assert credibility_of([]) == "low"
+
+
+def test_finding_text_never_returns_tool_output():
+    """无文本产出时不得把工具原文当 finding 正文，应用最后动作做占位。"""
+    from engine.agents.react_workers import finding_text
+    msgs = [_Msg("ai", tool_calls=[{"name": "tavily_search",
+                                    "args": {"query": "小米 专利"}}]),
+            _Msg("tool", "原始工具输出" * 200)]
+    text = finding_text(msgs)
+    assert "原始工具输出" not in text
+    assert "tavily_search" in text
+
+
+def test_researcher_survives_recursion_limit(monkeypatch):
+    """P1 回归：deep 模式 researcher 达递归上限不得炸整图，保留占位产出。"""
+    from langgraph.errors import GraphRecursionError
+
+    import engine.agents.researcher as mod
+    from engine.state import SubQuestion
+
+    class ExplodingAgent:
+        def stream(self, *a, **k):
+            raise GraphRecursionError("limit")
+
+    # 注入假 agent：否则 researcher_node 内部 _get_agent() 会构建真实 agent
+    # 并发起真实 LLM 调用（慢、消耗配额、结果不可断言）
+    monkeypatch.setattr(mod, "_agent", ExplodingAgent())
+    state = {"company": "小米", "objective": "",
+             "sub_q": SubQuestion(question="小米的主营业务"), "task_id": ""}
+    out = mod.researcher_node(state)
+    finding = out["findings"][0]
+    assert finding.content
+    assert finding.credibility == "low"
+    assert "上限" in out["timeline"][0]["detail"]
+
+
+def test_eval_tasks_hidden_from_list(tmp_path, monkeypatch):
+    """eval 评估任务与正式任务同表存储，但 list_tasks 只返回正式任务。"""
+    from storage import db
+    monkeypatch.setattr(db.settings, "data_dir", str(tmp_path))
+    db._conn = None
+    db.create_task("t1", "th1", "小米", "评估合作", "deep")
+    db.create_task("eval1", "th2", "小米", "评估集任务", "deep", kind="eval")
+    ids = [t["id"] for t in db.list_tasks()]
+    assert "t1" in ids and "eval1" not in ids
+    assert db.get_task("eval1")["kind"] == "eval"
+    db._conn = None  # 复位单例，避免污染其他测试

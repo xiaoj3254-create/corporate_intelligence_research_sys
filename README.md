@@ -55,6 +55,7 @@
 │   ├── graph.py         #   主图组装（双模式）
 │   ├── state.py         #   共享状态（findings/timeline 带 add_list reducer）
 │   ├── config.py        #   配置与 LLM 双档路由
+│   ├── events.py        #   实时事件汇（长节点内部事件即时外推）
 │   ├── nodes/           #   intake / deep_planner / critic / synthesizer /
 │   │                    #   human_review(interrupt) / reporter
 │   ├── teams/           #   团队子图工厂（组长拆解 → Send 并行 → 质检修订）

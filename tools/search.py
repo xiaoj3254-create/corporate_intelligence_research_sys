@@ -30,11 +30,14 @@ def _mock_search(query: str, n: int) -> str:
     return "\n\n".join(items)
 
 
-def _tavily_search(query: str, n: int) -> str:
-    """Tavily 主通道；返回结果文本，空字符串表示无结果，异常向上抛。"""
+def _tavily_search(query: str, n: int, timeout: int = 20) -> str:
+    """Tavily 主通道；返回结果文本，空字符串表示无结果，异常向上抛。
+
+    显式短超时快速失败（SDK 默认 60s），防单个挂起请求拖住整条 ReAct 轮。
+    """
     from tavily import TavilyClient
     resp = TavilyClient(api_key=settings.tavily_api_key).search(
-        query=query, max_results=n)
+        query=query, max_results=n, timeout=timeout)
     results = resp.get("results", [])
     if not results:
         return ""
